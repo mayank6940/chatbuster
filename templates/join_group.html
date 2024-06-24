@@ -1,0 +1,19 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBuster - Join with random people</title>
+    <link rel="stylesheet" href="{% static 'css/join_group.css' %}">
+</head>
+<body>
+    <div class="brand-name">ChatBuster</div>
+    <div class="container">
+        <form method="POST">
+            {% csrf_token %}
+            <button type="submit" class="join-btn">Join Chats</button>
+        </form>
+    </div>
+</body>
+</html>

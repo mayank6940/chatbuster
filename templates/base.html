@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- ===== CSS ===== -->
+        <link rel="stylesheet" href="{% static 'css/base.css' %}">
+
+        <title>ChatBuster</title>
+    </head>
+    <body>
+        <header class="header">
+            <a href="#" class="header__logo">ChatBuster</a>
+
+            <ion-icon name="menu-outline" class="header__toggle" id="nav-toggle"></ion-icon>
+
+            <nav class="nav" id="nav-menu">
+                <div class="nav__content bd-grid">
+
+                    <ion-icon name="close-outline" class="nav__close" id="nav-close"></ion-icon>
+    
+                    <div class="nav__perfil">
+                        <div class="nav__img">
+                            <img src="{% static 'media/pro.png' %}" alt="">
+                        </div>
+                        
+                        <div>
+                            <a href="/" class="nav__name">ChatBuster</a>
+                            <span class="nav__profesion">Have fun.</span>
+                        </div>
+                    </div>
+    
+                    <div class="nav__menu">
+                        <ul class="nav__list">
+                            <li class="nav__item"><a href="{% url 'chat' %}" class="nav__link">Chat</a></li>
+                            <li class="nav__item"><a href="{% url 'profile' %}" class="nav__link">Profile</a></li>
+                            <li class="nav__item"><a href="{% url 'logout' %}" class="nav__link">Logout</a></li>
+                        </ul>
+                    </div>
+    
+                    <div class="nav__social">
+                        <a href="https://www.linkedin.com/in/mayank8757/" class="nav__social-icon"><ion-icon name="logo-linkedin"></ion-icon></a>
+                        <a href="https://github.com/mayank6940" class="nav__social-icon"><ion-icon name="logo-github"></ion-icon></a>
+                        <a href="https://www.instagram.com/mayankcode/" class="nav__social-icon"><ion-icon name="logo-instagram"></ion-icon></a>
+                    </div>
+                </div>
+            </nav>
+        </header>
+        {% block content %} {% endblock content %}
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pica/8.1.1/pica.min.js"></script>
+
+        <!-- ===== IONICONS ===== -->
+        <script src="https://unpkg.com/ionicons@5.1.2/dist/ionicons.js"></script>
+
+        <!--===== MAIN JS =====-->
+        <script src="{% static 'chat.js' %}"></script>
+    </body>
+</html>

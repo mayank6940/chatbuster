@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% block content %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
+    <link rel="stylesheet" href="{% static 'css/chat.css' %}">
+    <link rel="stylesheet" href="{% static 'css/modal.css' %}"> <!-- New modal CSS -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-storage.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pica/5.1.1/pica.min.js"></script>
+</head>
+<body>
+    <div class="chat-container">
+        <div id="messages-container">
+            <!-- Messages will be appended dynamically here -->
+        </div>
+        <div class="message-input">
+            <div class="input-wrapper">
+                <input type="file" id="file-input" style="display: none;" accept="image/*" onchange="sendImage(event)">
+                <button type="button" id="file-button" onclick="document.getElementById('file-input').click()">
+                    <img src="{% static 'media/plus3.png' %}" alt="Upload" style="width: 24px; height: 24px;">
+                </button>
+                <textarea id="message" placeholder="Type your message here..." rows="2"></textarea>
+                <button type="button" onclick="sendMessage()">
+                    <img src="{% static 'media/send1.png' %}" alt="Send">
+                </button>
+            </div>
+        </div>
+        <div id="upload-progress-container">
+            <div id="upload-progress-bar"></div>
+        </div>
+    </div>
+
+   
+    <div id="imageModal" class="modal">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <script>
+        var firebaseConfig = JSON.parse('{{ firebase_config|escapejs }}');
+        firebase.initializeApp(firebaseConfig);
+
+        var database = firebase.database();
+        var storage = firebase.storage();
+        var username = "{{ username }}";
+        var character = "{{ character }}";
+        var messageInput = document.getElementById('message');
+        var messagesContainer = document.getElementById('messages-container');
+        var uploadProgressBar = document.getElementById('upload-progress-bar');
+        var uploadProgressContainer = document.getElementById('upload-progress-container');
+
+        function sendMessage() {
+            var message = messageInput.value.trim();
+
+            if (message !== "") {
+                // Temporarily disable the input to prevent multiple submissions
+                messageInput.disabled = true;
+                database.ref('messages/').push().set({
+                    "username": username,
+                    "character": character,
+                    "message": message
+                }, function(error) {
+                    // Re-enable the input
+                    messageInput.disabled = false;
+                    if (error) {
+                        console.error("Error sending message:", error);
+                    } else {
+                        console.log("Message sent successfully");
+                        messageInput.value = '';
+                        resetTextareaHeight(); // Reset the height after sending a message
+                        // Use requestAnimationFrame to ensure focus
+                        requestAnimationFrame(() => {
+                            messageInput.focus();
+                        });
+                    }
+                });
+            }
+        }
+
+        function sendMessageAndKeepFocus(event) {
+            event.preventDefault(); // Prevent default button action
+            sendMessage();
+            messageInput.focus(); // Keep focus on the textarea
+        }
+
+        // Function to handle image upload
+        async function sendImage(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+
+            // Check the file size
+            if (file.size > 1024 * 1024) { // If greater than 1MB
+                // Resize the image
+                const resizedBlob = await resizeImage(file, 500 * 1024); // Resize to 500KB
+                file = new File([resizedBlob], file.name, { type: file.type });
+            }
+
+            var storageRef = storage.ref('images/' + file.name);
+            var uploadTask = storageRef.put(file);
+
+            // Show upload progress
+            uploadProgressContainer.style.display = 'block';
+            uploadTask.on('state_changed', 
+                function(snapshot) {
+                    var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    console.log('Upload is ' + progress + '% done');
+                    // Display or update progress indicator
+                    updateUploadProgress(progress);
+                }, 
+                function(error) {
+                    console.error("Error uploading image:", error);
+                    // Handle upload error
+                    hideUploadProgress(); // Hide progress on error
+                }, 
+                function() {
+                    uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
+                        // Save image message to Firebase Database
+                        database.ref('messages/').push().set({
+                            "username": username,
+                            "character": character,
+                            "message": `<img src='${downloadURL}' class='chat-image' onclick='openModal("${downloadURL}")' alt='Image' style='max-width: 200px;'>`
+                        }, function(error) {
+                            if (error) {
+                                console.error("Error sending image:", error);
+                            } else {
+                                console.log("Image sent successfully");
+                                hideUploadProgress(); // Hide progress after successful upload
+                            }
+                        });
+                    });
+                }
+            );
+        }
+
+        // Function to resize the image using Pica (as previously defined)
+        function resizeImage(file, maxSize) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const picaInstance = pica(); // Initialize pica properly
+
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    picaInstance.resize(canvas, canvas, {
+                        quality: 3,
+                        alpha: true,
+                    }).then(result => picaInstance.toBlob(result, file.type, 0.8))
+                    .then(blob => {
+                        if (blob.size > maxSize) {
+                            picaInstance.resize(canvas, canvas, {
+                                quality: 3,
+                                alpha: true,
+                            }).then(result => picaInstance.toBlob(result, file.type, 0.5))
+                            .then(resizedBlob => resolve(resizedBlob))
+                            .catch(error => reject(error));
+                        } else {
+                            resolve(blob);
+                        }
+                    }).catch(error => reject(error));
+                };
+
+                img.onerror = error => reject(error);
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        // Function to update upload progress
+        function updateUploadProgress(progress) {
+            // Update the width of the progress bar
+            uploadProgressBar.style.width = progress + '%';
+        }
+
+        // Function to hide the upload progress bar
+        function hideUploadProgress() {
+            uploadProgressContainer.style.display = 'none';
+            uploadProgressBar.style.width = '0%'; // Reset progress bar width
+        }
+
+        // Open modal with full-size image
+        function openModal(imageUrl) {
+            var modal = document.getElementById('imageModal');
+            var modalImg = document.getElementById('modalImage');
+            modal.style.display = 'block';
+            modalImg.src = imageUrl;
+        }
+
+        // Close modal
+        function closeModal() {
+            var modal = document.getElementById('imageModal');
+            modal.style.display = 'none';
+        }
+
+        // Send message on Enter key press
+        messageInput.addEventListener("keydown", function(event) {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Listening for new messages
+        database.ref('messages/').on('child_added', function(snapshot) {
+            var data = snapshot.val();
+            var messageContainer = document.createElement('div');
+            messageContainer.classList.add('message');
+
+            if (data.username === username) {
+                messageContainer.classList.add('sender');
+            } else {
+                messageContainer.classList.add('receiver');
+            }
+
+            messageContainer.innerHTML = 
+                `<div class="message-bubble">
+                    <div class="message-username">${data.username} (${data.character}):</div>
+                    <div>${data.message}</div>
+                </div>`;
+            
+            messagesContainer.appendChild(messageContainer);
+
+            // Scroll to the bottom of the messages container
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+
+        // Auto-expand textarea
+        document.addEventListener('DOMContentLoaded', function () {
+            function adjustTextareaHeight() {
+                messageInput.style.height = 'auto'; // Reset the height to auto
+                messageInput.style.height = messageInput.scrollHeight + 'px'; // Set the height to the scroll height
+            }
+
+            messageInput.addEventListener('input', adjustTextareaHeight);
+
+            // Trigger the adjustment on initial load
+            adjustTextareaHeight();
+        });
+
+        // Reset textarea height after sending a message
+        function resetTextareaHeight() {
+            messageInput.style.height = 'auto'; // Reset the height to auto
+            messageInput.style.height = '70px'; // Set the height to the default height
+        }
+    </script>
+</body>
+{% endblock content %}
+</html>

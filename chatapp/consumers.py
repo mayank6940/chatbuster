@@ -1,4 +1,4 @@
-# ChatApp/consumers.py
+
 
 import firebase_admin
 from firebase_admin import db
@@ -6,7 +6,7 @@ from django.conf import settings
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 import datetime
-# Initialize Firebase database
+
 firebase_admin.initialize_app()
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -16,7 +16,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         room_id = self.scope['url_route']['kwargs']['room_id']
         sender_username = self.scope['user'].username
 
-        # Save message to Firebase Realtime Database
+        
         ref = db.reference(f'/chat_rooms/{room_id}/messages')
         ref.push({
             'sender': sender_username,
@@ -24,7 +24,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'timestamp': datetime.now().isoformat(),
         })
 
-        # Broadcast message to room group (if needed)
+        
         await self.channel_layer.group_send(
             self.room_group_name,
             {

@@ -1,4 +1,4 @@
-# chat/firebase_utils.py
+
 import firebase_admin
 from firebase_admin import credentials, db
 import datetime
@@ -21,7 +21,7 @@ def get_chat_messages(sender_id, recipient_id):
     else:
         return []
 
-# Example function to fetch messages and convert timestamps to datetime objects
+
 def fetch_messages_with_timestamp_conversion(sender_id, recipient_id):
     messages = get_chat_messages(sender_id, recipient_id)
     converted_messages = []
